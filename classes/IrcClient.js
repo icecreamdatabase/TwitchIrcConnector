@@ -66,6 +66,7 @@ class IrcClient {
    * @param {WsDataReceiveJoinAndPart} data
    */
   async onJoin (data) {
+
     await this.ircConnectionPool.joinChannel(data.channelName)
   }
 

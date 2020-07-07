@@ -30,7 +30,7 @@ class WsServer extends EventEmitter {
   /**
    * @typedef {Object} WsDataReceiveJoinAndPart
    * @property {number|string} botUserId
-   * @property {string} channelName
+   * @property {string[]} channelNames
    */
 
   /**
