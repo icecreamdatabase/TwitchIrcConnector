@@ -1,0 +1,10 @@
+{
+  "logDiscord": true,
+  "discord": {
+    "bot-log": {
+      "id": "xxxxxxxxxxxxxxxxxx",
+      "token": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+  },
+  "wsPort": 4701
+}
