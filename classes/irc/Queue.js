@@ -28,10 +28,10 @@ class Queue {
    */
 
   /**
-   * @param {Bot} bot
+   * @param {IrcClient} ircClient
    */
-  constructor (bot) {
-    this._bot = bot
+  constructor (ircClient) {
+    this._ircClient = ircClient
 
     /**
      * @type {MessageQueueElement[]}
@@ -47,16 +47,16 @@ class Queue {
      */
     this._channelProcessing = []
 
-    this._privmsgModeratorbucket = new BasicBucket(this.bot.irc.rateLimitModerator)
-    this._privsgUserBucket = new BasicBucket(this.bot.irc.rateLimitUser)
+    this._privmsgModeratorbucket = new BasicBucket(this.ircClient.rateLimitModerator)
+    this._privsgUserBucket = new BasicBucket(this.ircClient.rateLimitUser)
     this._queueEmitter.on('event', this.checkQueue.bind(this))
   }
 
   /**
-   * @return {Bot}
+   * @return {IrcClient}
    */
-  get bot () {
-    return this._bot
+  get ircClient () {
+    return this._ircClient
   }
 
   /**
@@ -65,43 +65,7 @@ class Queue {
    * @param {string} message
    */
   sendWhisper (targetUser, message) {
-    this.sayWithBoth(this.bot.userId, this.bot.userName, `.w ${targetUser} ${message}`)
-  }
-
-  /**
-   * Send a message with the channelId
-   * Does an api call to get channelName! Avoid this function if possible.
-   * @param channelId
-   * @param message
-   * @param userId
-   * @param {boolean} [useSameSendConnectionAsPrevious] undefined = automatic detection based on message splitting.
-   * @returns {Promise<void>}
-   */
-  async sayWithChannelId (channelId, message, userId, useSameSendConnectionAsPrevious) {
-    this.sayWithBoth(channelId, await this.bot.userIdLoginCache.idToName(channelId), message, userId)
-  }
-
-  /**
-   * Send a message with the channelName
-   * Does an api call to get channelId! Avoid this function if possible.
-   * @param channelName
-   * @param message
-   * @param userId
-   * @param {boolean} [useSameSendConnectionAsPrevious] undefined = automatic detection based on message splitting.
-   * @returns {Promise<void>}
-   */
-  async sayWithChannelName (channelName, message, userId, useSameSendConnectionAsPrevious) {
-    this.sayWithBoth(await this.bot.userIdLoginCache.nameToId(channelName), channelName, message, userId)
-  }
-
-  /**
-   * Send a message with the msgObj
-   * @param msgObj
-   * @param message
-   * @param {boolean} [useSameSendConnectionAsPrevious] undefined = automatic detection based on message splitting.
-   */
-  sayWithMsgObj (msgObj, message, useSameSendConnectionAsPrevious) {
-    this.sayWithBoth(msgObj.roomId, msgObj.channel, message, msgObj.userId, useSameSendConnectionAsPrevious)
+    this.sayWithBoth(this.ircClient.userId, this.ircClient.userName, `.w ${targetUser} ${message}`)
   }
 
   /**
@@ -164,7 +128,7 @@ class Queue {
    * @returns {string} split message
    */
   splitRecursively (message, channelId) {
-    let maxMessageLength = this.bot.irc.channels[channelId].maxMessageLength
+    let maxMessageLength = this.ircClient.channels[channelId].maxMessageLength
     if (message.length > maxMessageLength) {
       let indexOfLastSpace = message.substring(0, maxMessageLength).lastIndexOf(' ')
       if (indexOfLastSpace < maxMessageLength * MIN_MESSAGE_CUT_LENGTH_FACTOR) {
@@ -208,7 +172,7 @@ class Queue {
     // This channel is currently getting processed
     this._channelProcessing.push(msgObj.channelId)
 
-    let channel = this.bot.irc.channels[msgObj.channelId]
+    let channel = this.ircClient.channels[msgObj.channelId]
     let botStatus = channel.botStatus || UserLevels.DEFAULT
     if (typeof botStatus === 'undefined' || botStatus === null) {
       botStatus = UserLevels.DEFAULT
@@ -245,58 +209,10 @@ class Queue {
     }
     channel.lastMessage = msgObj.message
 
-    this.bot.irc.ircConnectionPool.say(msgObj.channelName, msgObj.message, msgObj.useSameSendConnectionAsPrevious)
+    this.ircClient.ircConnectionPool.say(msgObj.channelName, msgObj.message, msgObj.useSameSendConnectionAsPrevious)
 
     this._messageQueue = this._messageQueue.filter(c => c !== msgObj)
     this.resetItemInQueue(msgObj)
-  }
-
-  /**
-   * Say an array of strings.
-   * @param {string|number} roomId
-   * @param {string} channelName
-   * @param {string[]} messages
-   * @param {number} batchLimit
-   * @param {boolean} useSameSendConnectionForAllMessages
-   * @return {Promise<void>}
-   */
-  async batchSay (roomId, channelName, messages, batchLimit = BATCH_DEFAULT_LIMIT, useSameSendConnectionForAllMessages = false) {
-    let channelObj = this.bot.irc.channels[roomId]
-    let botStatus = channelObj.botStatus || UserLevels.DEFAULT
-    let messageInChunkCount = 0
-    let currentLimit = botStatus >= UserLevels.VIP
-      ? this.bot.irc.rateLimitModerator
-      : this.bot.irc.rateLimitUser
-    currentLimit = Math.min(currentLimit * BATCH_MAX_FACTOR, batchLimit)
-    let totalMessagesSent = 0
-
-    Logger.info(`New limit: ${currentLimit}`)
-    for (let message of messages) {
-      if (messageInChunkCount >= currentLimit) {
-        messageInChunkCount = 0
-
-        // update limit
-        channelObj = this.bot.irc.channels[roomId]
-        botStatus = channelObj.botStatus || UserLevels.DEFAULT
-        currentLimit = botStatus >= UserLevels.VIP
-          ? this.bot.irc.rateLimitModerator
-          : this.bot.irc.rateLimitUser
-        currentLimit = Math.min(currentLimit * BATCH_MAX_FACTOR, batchLimit)
-
-        Logger.info(`New limit: ${currentLimit}`)
-        Logger.info(`${totalMessagesSent}/${messages.length} sent`)
-        Logger.info(`Starting pause for: ${BATCH_DELAY_BETWEEN_CHUNKS / 1000}s`)
-        await sleep(BATCH_DELAY_BETWEEN_CHUNKS)
-        while (this._messageQueue.length > 0) {
-          await sleep(100)
-        }
-      }
-
-      this.sayWithBoth(roomId, channelName, message, this.bot.userId, useSameSendConnectionForAllMessages)
-      messageInChunkCount++
-      totalMessagesSent++
-    }
-    Logger.info("Done")
   }
 }
 

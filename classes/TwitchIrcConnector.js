@@ -1,13 +1,13 @@
 "use strict"
 const WebSocketServer = new (require('./WsServer')) // singleton
-const Client = require('./Client')
+const IrcClient = require('./IrcClient')
 const WsCmds = require('../ENUMS/WsCmds')
 
 
 class TwitchIrcConnector {
   constructor () {
     /**
-     * @type {Object.<number|string,Client>}
+     * @type {Object.<number|string,IrcClient>}
      * @private
      */
     this._clients = {}
@@ -22,7 +22,7 @@ class TwitchIrcConnector {
     if (Object.prototype.hasOwnProperty.call(this._clients, data.userId)) {
       this._clients[data.userId].updateAuth(data)
     } else {
-      this._clients[data.userId] = new Client(data)
+      this._clients[data.userId] = new IrcClient(data)
     }
   }
 

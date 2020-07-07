@@ -3,19 +3,24 @@ const WebSocketServer = new (require('./WsServer')) // singleton
 const IrcConnectionPool = require('./irc/IrcConnectionPool')
 const WsCmds = require('../ENUMS/WsCmds')
 
-class Client {
+class IrcClient {
   /**
    * @param {WsDataReceiveAuth} data
    */
   constructor (data) {
-    this._userId = data.userId
-    this._userName = data.userName
-    this._accessToken = data.accessToken
+    this.updateAuth(data)
+
+    /**
+     * @type {Object.<number,{maxMessageLength: number, botStatus: UserLevel}>}
+     */
+    this.channels = {}
 
     WebSocketServer.on(WsCmds.JOIN, this.onJoin.bind(this))
     WebSocketServer.on(WsCmds.PART, this.onPart.bind(this))
     WebSocketServer.on(WsCmds.SEND, this.onSend.bind(this))
     WebSocketServer.on(WsCmds.SET_CHANNELS, this.onSetChannels.bind(this))
+
+    this.ircConnectionPool = new IrcConnectionPool(this)
   }
 
   get userId () {
@@ -30,6 +35,14 @@ class Client {
     return this._accessToken
   }
 
+  get rateLimitModerator () {
+    return this._rateLimitModerator
+  }
+
+  get rateLimitUser () {
+    return this._rateLimitUser
+  }
+
   /**
    * @param {WsDataReceiveAuth} data
    */
@@ -37,6 +50,8 @@ class Client {
     this._userId = data.userId
     this._userName = data.userName
     this._accessToken = data.accessToken
+    this._rateLimitModerator = data.rateLimitModerator
+    this._rateLimitUser = data.rateLimitUser
   }
 
   /**
@@ -68,5 +83,5 @@ class Client {
   }
 }
 
-module.exports = Client
+module.exports = IrcClient
 

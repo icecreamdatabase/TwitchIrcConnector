@@ -23,6 +23,8 @@ class WsServer extends EventEmitter {
    * @property {number|string} userId
    * @property {string} userName
    * @property {string} accessToken
+   * @property {number} rateLimitModerator
+   * @property {number} rateLimitUser
    */
 
   /**

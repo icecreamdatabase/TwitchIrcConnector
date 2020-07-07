@@ -9,8 +9,11 @@ const SEND_CONNECTION_COUNT_VERIFIED = 5
 const SEND_CONNECTION_COUNT_ELSE = 2
 
 class IrcConnectionPool {
-  constructor (bot) {
-    this.bot = bot
+  /**
+   * @param {IrcClient} ircClient
+   */
+  constructor (ircClient) {
+    this._ircClient = ircClient
     /**
      * @type {TwitchIrcConnection[]}
      */
@@ -26,6 +29,13 @@ class IrcConnectionPool {
     this.events = []
 
     this.connectSendConnections()
+  }
+
+  /**
+   * @returns {IrcClient}
+   */
+  get ircClient () {
+    return this._ircClient
   }
 
   /**
@@ -71,12 +81,12 @@ class IrcConnectionPool {
   }
 
   connectSendConnections () {
-    let connectionsSendCount = this.bot.irc.rateLimitModerator === ChatLimit.VERIFIED_MOD
+    let connectionsSendCount = this.ircClient.rateLimitModerator === ChatLimit.VERIFIED_MOD
       ? SEND_CONNECTION_COUNT_VERIFIED
       : SEND_CONNECTION_COUNT_ELSE
 
     for (let i = 0; i < connectionsSendCount; i++) {
-      let connection = new TwitchIrcConnection(this.bot)
+      let connection = new TwitchIrcConnection(this.ircClient)
       connection.connect().then(() => {
         this.sendConnections.push(connection)
       })
@@ -175,7 +185,7 @@ class IrcConnectionPool {
    * @return {Promise<TwitchIrcConnection>}
    */
   async addConnectionToPool () {
-    let newConnection = new TwitchIrcConnection(this.bot)
+    let newConnection = new TwitchIrcConnection(this.ircClient)
     await newConnection.connect()
     for (let event of this.events) {
       newConnection.on(event.event, event.fn, event.context)
