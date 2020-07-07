@@ -11,8 +11,14 @@ class IrcClient {
   constructor (data) {
     this.updateAuth(data)
 
+    //TODO maxMessageLength and botStatus have to come from somewhere!
     /**
-     * @type {Object.<number,{maxMessageLength: number, botStatus: UserLevel}>}
+     * @type {Object.<number,{
+     *   maxMessageLength: number,
+     *   botStatus: UserLevel,
+     *   lastMessageTimeMillis: number,
+     *   lastMessage: string
+     * }>}
      */
     this.channels = {}
 
