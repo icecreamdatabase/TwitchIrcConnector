@@ -226,7 +226,7 @@ class Queue {
 /**
  * Basic sleep function
  * @param ms
- * @returns {Promise<unknown>}
+ * @returns {Promise<undefined>}
  */
 function sleep (ms) {
   return new Promise(resolve => setTimeout(resolve, ms))

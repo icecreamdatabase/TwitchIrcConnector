@@ -45,7 +45,7 @@ class WsServer extends EventEmitter {
    * @property {number|string} channelId
    * @property {string} channelName
    * @property {string} message
-   * @property {number|string} userId
+   * @property {number|string} [userId]
    * @property {boolean} [useSameSendConnectionAsPrevious] undefined = automatic detection based on message splitting.
    *
    */

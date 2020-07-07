@@ -2,6 +2,7 @@
 const TwitchIrcConnector = require('./classes/TwitchIrcConnector')
 const DiscordLog = require('./classes/helper/DiscordLog')
 const Logger = require('./classes/helper/Logger')
+const util = require('util')
 
 const config = require('./config.json')
 
