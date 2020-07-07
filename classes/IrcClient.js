@@ -1,5 +1,6 @@
 "use strict"
 const WebSocketServer = new (require('./WsServer')) // singleton
+const Queue = require('./irc/Queue')
 const IrcConnectionPool = require('./irc/IrcConnectionPool')
 const WsCmds = require('../ENUMS/WsCmds')
 
@@ -20,6 +21,7 @@ class IrcClient {
     WebSocketServer.on(WsCmds.SEND, this.onSend.bind(this))
     WebSocketServer.on(WsCmds.SET_CHANNELS, this.onSetChannels.bind(this))
 
+    this.queue = new Queue(this)
     this.ircConnectionPool = new IrcConnectionPool(this)
   }
 
@@ -57,28 +59,28 @@ class IrcClient {
   /**
    * @param {WsDataReceiveJoinAndPart} data
    */
-  onJoin (data) {
-
+  async onJoin (data) {
+    await this.ircConnectionPool.joinChannel(data.channelName)
   }
 
   /**
    * @param {WsDataReceiveJoinAndPart} data
    */
-  onPart (data) {
-
+  async onPart (data) {
+    await this.ircConnectionPool.leaveChannel(data.channelName)
   }
 
   /**
    * @param {WsDataReceiveSend} data
    */
   onSend (data) {
-
+    this.queue.sayWithWsDataReceiveSendObj(data)
   }
 
   /**
    * @param {WsDataReceiveRemoveBot} data
    */
-  onSetChannels (data) {
+  async onSetChannels (data) {
 
   }
 }

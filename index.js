@@ -1,5 +1,5 @@
 "use strict"
-const TwitchIrcConnector = require('classes/TwitchIrcConnector')
+const TwitchIrcConnector = require('./classes/TwitchIrcConnector')
 const DiscordLog = require('./classes/helper/DiscordLog')
 const Logger = require('./classes/helper/Logger')
 

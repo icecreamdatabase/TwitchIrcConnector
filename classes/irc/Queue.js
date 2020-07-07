@@ -69,6 +69,13 @@ class Queue {
   }
 
   /**
+   * @param {WsDataReceiveSend} data
+   */
+  sayWithWsDataReceiveSendObj (data) {
+    this.sayWithBoth(data.channelId, data.channelName, data.message, data.userId, data.useSameSendConnectionAsPrevious)
+  }
+
+  /**
    * Send a message with both the channelId and the channelName.
    * channelId and channelName have to match else there might be unpredictable problems.
    * @param {string|number} channelId

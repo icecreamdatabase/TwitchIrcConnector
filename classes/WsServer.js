@@ -42,7 +42,12 @@ class WsServer extends EventEmitter {
   /**
    * @typedef {Object} WsDataReceiveSend
    * @property {number|string} botUserId
+   * @property {number|string} channelId
    * @property {string} channelName
+   * @property {string} message
+   * @property {number|string} userId
+   * @property {boolean} [useSameSendConnectionAsPrevious] undefined = automatic detection based on message splitting.
+   *
    */
 
   /**
@@ -79,6 +84,8 @@ class WsServer extends EventEmitter {
         }
       })
     }, WEBSOCKETPINGINTERVAL)
+
+    Logger.info(`WebSocket Server running...`)
 
     return this
   }
