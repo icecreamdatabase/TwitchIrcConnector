@@ -3,6 +3,7 @@ const WebSocketServer = new (require('./WsServer')) // singleton
 const Queue = require('./irc/Queue')
 const IrcConnectionPool = require('./irc/IrcConnectionPool')
 const WsCmds = require('../ENUMS/WsCmds')
+const Logger = require('./helper/Logger')
 
 class IrcClient {
   /**
@@ -29,6 +30,8 @@ class IrcClient {
 
     this.queue = new Queue(this)
     this.ircConnectionPool = new IrcConnectionPool(this)
+
+    this.ircConnectionPool.on('*', data => WebSocketServer.sendToAllClientForBotUserId(this.userId, WsCmds.RECEIVE, data))
   }
 
   get userId () {
@@ -55,6 +58,7 @@ class IrcClient {
    * @param {WsDataReceiveAuth} data
    */
   updateAuth (data) {
+    Logger.info(`Auth for: ${data.userId} (${data.userName})`)
     this._userId = data.userId
     this._userName = data.userName
     this._accessToken = data.accessToken
@@ -66,15 +70,16 @@ class IrcClient {
    * @param {WsDataReceiveJoinAndPart} data
    */
   async onJoin (data) {
-
-    await this.ircConnectionPool.joinChannel(data.channelName)
+    Logger.info(`Joining: ${data.channelNames}`)
+    await this.ircConnectionPool.joinChannel(data.channelNames)
   }
 
   /**
    * @param {WsDataReceiveJoinAndPart} data
    */
   async onPart (data) {
-    await this.ircConnectionPool.leaveChannel(data.channelName)
+    Logger.info(`Parting: ${data.channelNames}`)
+    await this.ircConnectionPool.leaveChannel(data.channelNames)
   }
 
   /**
@@ -88,7 +93,7 @@ class IrcClient {
    * @param {WsDataReceiveRemoveBot} data
    */
   async onSetChannels (data) {
-
+    console.log(data)
   }
 }
 

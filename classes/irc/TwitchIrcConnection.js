@@ -97,6 +97,7 @@ class TwitchIrcConnection extends EventEmitter {
         }
         try {
           this.emit(parsed.command, cleanObj)
+          this.emit('*', cleanObj)
         } catch (e) {
           Logger.error(e)
         }

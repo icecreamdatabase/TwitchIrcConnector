@@ -97,7 +97,7 @@ class WsServer extends EventEmitter {
   /**
    * @param {WebSocketServer} wss
    * @param {WebSocket} ws
-   * @param {IncomingMessage} req
+   * @param {IncomingMessage} req http.IncomingMessage
    */
   newConnection (wss, ws, req) {
     Logger.log(`°° WS connected. Current connections: ${ws._socket.server["_connections"]}`)
@@ -121,7 +121,7 @@ class WsServer extends EventEmitter {
 
         if (parsedMsg.cmd === WsCmds.AUTH) {
           // noinspection JSUndefinedPropertyAssignment
-          ws.data = parsedMsg.data
+          ws.data = parsedMsg.data.userId
         }
         this.emit(parsedMsg.cmd, parsedMsg.data)
       } else {
@@ -134,19 +134,23 @@ class WsServer extends EventEmitter {
     }
   }
 
+  sendToAllClientForBotUserId (userId, cmd, data = undefined) {
+    this.sendToWebsocket(cmd, data, client => client.data === userId)
+  }
+
   /**
-   * Send data to all open websocket clients based on a includeChannelChecker function.
+   * Send data to all open websocket clients based on a includeClientChecker function.
    * @param {string} cmd
    * @param {object} data
-   * @param {function(WsDataReceive): boolean} includeChannelChecker
+   * @param {function(WsDataReceive): boolean} includeClientChecker
    * @return {number} How many clients has the message been sent to.
    */
-  sendToWebsocket (cmd, data = undefined, includeChannelChecker = () => true) {
+  sendToWebsocket (cmd, data = undefined, includeClientChecker = () => true) {
     let clientsSentTo = 0
     this.wss.clients.forEach((client) => {
         if (client.readyState === Ws.OPEN
           && Object.prototype.hasOwnProperty.call(client, "data") //this check is for "a client has connected but not sent any signup / connect data yet".
-          && includeChannelChecker(client.data)) {
+          && includeClientChecker(client.data)) {
           try {
             clientsSentTo++
             client.send(JSON.stringify({cmd: cmd.toLowerCase(), data: data, version: this.WS_VERSION}))
