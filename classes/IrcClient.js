@@ -7,6 +7,16 @@ const Logger = require('./helper/Logger')
 
 class IrcClient {
   /**
+   * @typedef {Object} ChannelData
+   * @property {number} channelId
+   * @property {string} channelName
+   * @property {number} maxMessageLength
+   * @property {UserLevel} botStatus
+   * @property {number} lastMessageTimeMillis
+   * @property {string} lastMessage
+   */
+
+  /**
    * @param {WsDataReceiveAuth} data
    */
   constructor (data) {
@@ -14,12 +24,7 @@ class IrcClient {
 
     //TODO maxMessageLength and botStatus have to come from somewhere!
     /**
-     * @type {Object.<number,{
-     *   maxMessageLength: number,
-     *   botStatus: UserLevel,
-     *   lastMessageTimeMillis: number,
-     *   lastMessage: string
-     * }>}
+     * @type {Object.<number,ChannelData>}
      */
     this.channels = {}
 
@@ -70,30 +75,41 @@ class IrcClient {
    * @param {WsDataReceiveJoinAndPart} data
    */
   async onJoin (data) {
-    Logger.info(`Joining: ${data.channelNames}`)
-    await this.ircConnectionPool.joinChannel(data.channelNames)
+    if (this.userId === data.botUserId) {
+      Logger.info(`Joining: ${data.channelNames}`)
+      await this.ircConnectionPool.joinChannel(data.channelNames)
+    }
   }
 
   /**
    * @param {WsDataReceiveJoinAndPart} data
    */
   async onPart (data) {
-    Logger.info(`Parting: ${data.channelNames}`)
-    await this.ircConnectionPool.leaveChannel(data.channelNames)
+    if (this.userId === data.botUserId) {
+      Logger.info(`Parting: ${data.channelNames}`)
+      await this.ircConnectionPool.leaveChannel(data.channelNames)
+    }
   }
 
   /**
    * @param {WsDataReceiveSend} data
    */
   onSend (data) {
-    this.queue.sayWithWsDataReceiveSendObj(data)
+    if (this.userId === data.botUserId) {
+      this.queue.sayWithWsDataReceiveSendObj(data)
+    }
   }
 
   /**
-   * @param {WsDataReceiveRemoveBot} data
+   * @param {WsDataReceiveSetChannels} data
    */
   async onSetChannels (data) {
-    console.log(data)
+    if (this.userId === data.botUserId) {
+      let channelsToPart = this.ircConnectionPool.channels.filter(x => !data.channelNames.includes(x))
+      let channelsToJoin = data.channelNames.filter(x => !this.ircConnectionPool.channels.includes(x))
+      await this.ircConnectionPool.leaveChannel(channelsToPart)
+      await this.ircConnectionPool.joinChannel(channelsToJoin)
+    }
   }
 }
 

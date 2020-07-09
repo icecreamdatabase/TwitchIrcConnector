@@ -38,6 +38,14 @@ class IrcConnectionPool {
     return this._ircClient
   }
 
+  get channels () {
+    let channels = []
+    for (const receiveConnection of this.receiveConnections) {
+      channels.push(...receiveConnection.channels)
+    }
+    return channels
+  }
+
   /**
    * Returns average pings of all connections rounded to two decimal places.
    * NaN if no connection exists.

@@ -135,14 +135,18 @@ class WsServer extends EventEmitter {
   }
 
   sendToAllClientForBotUserId (userId, cmd, data = undefined) {
-    this.sendToWebsocket(cmd, data, client => client.data === userId)
+    this.sendToWebsocket(cmd,
+      data,
+      function (client) { // Don't use arrow function! Else userId is not accessible!
+        return client === userId
+      })
   }
 
   /**
    * Send data to all open websocket clients based on a includeClientChecker function.
    * @param {string} cmd
    * @param {object} data
-   * @param {function(WsDataReceive): boolean} includeClientChecker
+   * @param {function(WsDataReceive.data): boolean} includeClientChecker
    * @return {number} How many clients has the message been sent to.
    */
   sendToWebsocket (cmd, data = undefined, includeClientChecker = () => true) {
@@ -153,6 +157,7 @@ class WsServer extends EventEmitter {
           && includeClientChecker(client.data)) {
           try {
             clientsSentTo++
+            Logger.debug(`°° WS sent:     ${JSON.stringify({cmd: cmd.toLowerCase(), data: data, version: this.WS_VERSION})}`)
             client.send(JSON.stringify({cmd: cmd.toLowerCase(), data: data, version: this.WS_VERSION}))
           } catch (e) {
             Logger.error(__filename + "\nsend failed\n" + e)

@@ -203,7 +203,7 @@ class TwitchIrcConnection extends EventEmitter {
       return
     }
     if (data !== 'PONG' && data !== 'PING') {
-      Logger.debug(`--> ${data.startsWith('PASS ') ? 'PASS oauth:********' : data}`)
+      Logger.debug(`${this.ircClient.userId} (${this.ircClient.userName}) --> ${data.startsWith('PASS ') ? 'PASS oauth:********' : data}`)
     }
     ++this.commandsPer30
     this.client.write(`${data}\n`)
