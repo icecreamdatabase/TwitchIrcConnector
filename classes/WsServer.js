@@ -57,6 +57,11 @@ class WsServer extends EventEmitter {
    */
 
   /**
+   * @typedef {Object} WsDataRequestIrcStates
+   * @property {number|string} botUserId
+   */
+
+  /**
    * @return {WsServer}
    */
   constructor () {

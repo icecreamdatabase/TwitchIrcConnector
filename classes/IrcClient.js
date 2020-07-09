@@ -29,11 +29,29 @@ class IrcClient {
     WebSocketServer.on(WsCmds.PART, this.onPart.bind(this))
     WebSocketServer.on(WsCmds.SEND, this.onSend.bind(this))
     WebSocketServer.on(WsCmds.SET_CHANNELS, this.onSetChannels.bind(this))
+    WebSocketServer.on(WsCmds.GET_IRC_STATES, this.OnGetIrcStates.bind(this))
 
     this.queue = new Queue(this)
     this.ircConnectionPool = new IrcConnectionPool(this)
 
-    this.ircConnectionPool.on('*', data => WebSocketServer.sendToAllClientForBotUserId(this.userId, WsCmds.RECEIVE, data))
+    this.lastUserStates = {}
+    this.lastRoomStates = {}
+    this.ircConnectionPool.on('*', this.onIrcEvent.bind(this))
+
+  }
+
+  onIrcEvent (data) {
+    WebSocketServer.sendToAllClientForBotUserId(this.userId, WsCmds.RECEIVE, data)
+    if (Object.prototype.hasOwnProperty.call(data, "command")) {
+      switch (data.command) {
+        case "USERSTATE":
+          this.lastUserStates[data.param.sub(1)] = data
+          break
+        case "ROOMSTATE":
+          this.lastRoomStates[data.param.sub(1)] = data
+          break
+      }
+    }
   }
 
   get userId () {
@@ -107,6 +125,23 @@ class IrcClient {
       let channelsToJoin = data.channelNames.filter(x => !this.ircConnectionPool.channels.includes(x))
       await this.partListOfNames(channelsToPart)
       await this.joinListOfNames(channelsToJoin)
+    }
+  }
+
+  /**
+   * @param {WsDataRequestIrcStates} data
+   * @returns {Promise<void>}
+   */
+  async OnGetIrcStates (data) {
+    for (const lastUserStatesKey in this.lastUserStates) {
+      if (Object.prototype.hasOwnProperty.call(this.lastUserStates, lastUserStatesKey)) {
+        WebSocketServer.sendToAllClientForBotUserId(this.userId, WsCmds.RECEIVE, this.lastUserStates[lastUserStatesKey])
+      }
+    }
+    for (const lastRoomStatesKey in this.lastRoomStates) {
+      if (Object.prototype.hasOwnProperty.call(this.lastRoomStates, lastRoomStatesKey)) {
+        WebSocketServer.sendToAllClientForBotUserId(this.userId, WsCmds.RECEIVE, this.lastRoomStates[lastRoomStatesKey])
+      }
     }
   }
 
