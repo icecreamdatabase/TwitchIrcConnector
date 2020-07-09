@@ -8,23 +8,20 @@ const Logger = require('./helper/Logger')
 class IrcClient {
   /**
    * @typedef {Object} ChannelData
-   * @property {number} channelId
-   * @property {string} channelName
-   * @property {number} maxMessageLength
-   * @property {UserLevel} botStatus
    * @property {number} lastMessageTimeMillis
    * @property {string} lastMessage
    */
 
   /**
-   * @param {WsDataReceiveAuth} data
+   * @param {WsDataAuth} data
    */
   constructor (data) {
     this.updateAuth(data)
 
     //TODO maxMessageLength and botStatus have to come from somewhere!
     /**
-     * @type {Object.<number,ChannelData>}
+     * Key is the channelname without a #
+     * @type {Object.<string,ChannelData>}
      */
     this.channels = {}
 
@@ -60,7 +57,7 @@ class IrcClient {
   }
 
   /**
-   * @param {WsDataReceiveAuth} data
+   * @param {WsDataAuth} data
    */
   updateAuth (data) {
     Logger.info(`Auth for: ${data.userId} (${data.userName})`)
@@ -72,43 +69,66 @@ class IrcClient {
   }
 
   /**
-   * @param {WsDataReceiveJoinAndPart} data
-   */
-  async onJoin (data) {
-    if (this.userId === data.botUserId) {
-      Logger.info(`Joining: ${data.channelNames}`)
-      await this.ircConnectionPool.joinChannel(data.channelNames)
-    }
-  }
-
-  /**
-   * @param {WsDataReceiveJoinAndPart} data
-   */
-  async onPart (data) {
-    if (this.userId === data.botUserId) {
-      Logger.info(`Parting: ${data.channelNames}`)
-      await this.ircConnectionPool.leaveChannel(data.channelNames)
-    }
-  }
-
-  /**
-   * @param {WsDataReceiveSend} data
+   * @param {WsDataSend} data
    */
   onSend (data) {
     if (this.userId === data.botUserId) {
+      if (data.channelName.charAt(0) === '#') {
+        data.channelName = data.channelName.substr(1)
+      }
       this.queue.sayWithWsDataReceiveSendObj(data)
     }
   }
 
   /**
-   * @param {WsDataReceiveSetChannels} data
+   * @param {WsDataJoinPartSet} data
+   */
+  async onJoin (data) {
+    if (this.userId === data.botUserId) {
+      await this.joinListOfNames(data.channelNames)
+    }
+  }
+
+  /**
+   * @param {WsDataJoinPartSet} data
+   */
+  async onPart (data) {
+    if (this.userId === data.botUserId) {
+      await this.partListOfNames(data.channelNames)
+    }
+  }
+
+  /**
+   * @param {WsDataJoinPartSet} data
    */
   async onSetChannels (data) {
     if (this.userId === data.botUserId) {
       let channelsToPart = this.ircConnectionPool.channels.filter(x => !data.channelNames.includes(x))
       let channelsToJoin = data.channelNames.filter(x => !this.ircConnectionPool.channels.includes(x))
-      await this.ircConnectionPool.leaveChannel(channelsToPart)
-      await this.ircConnectionPool.joinChannel(channelsToJoin)
+      await this.partListOfNames(channelsToPart)
+      await this.joinListOfNames(channelsToJoin)
+    }
+  }
+
+  async joinListOfNames (channelNames) {
+    channelNames = channelNames.map(x => x.charAt(0) === '#' ? x.substr(0) : x)
+
+    if (channelNames.length > 0) {
+      Logger.info(`Joining: ${channelNames}`)
+      for (const channelName of channelNames) {
+        if (!Object.prototype.hasOwnProperty.call(this.channels, channelName)) {
+          this.channels[channelName] = {lastMessage: "", lastMessageTimeMillis: 0}
+        }
+      }
+      await this.ircConnectionPool.joinChannel(channelNames)
+    }
+  }
+
+  async partListOfNames (channelNames) {
+    if (channelNames.length > 0) {
+      Logger.info(`Parting: ${channelNames}`)
+      this.channels = this.channels.filter(x => !channelNames.includes(x))
+      await this.ircConnectionPool.leaveChannel(channelNames)
     }
   }
 }

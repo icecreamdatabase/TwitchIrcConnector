@@ -18,7 +18,7 @@ class TwitchIrcConnector {
   }
 
   /**
-   * @param {WsDataReceiveAuth} data
+   * @param {WsDataAuth} data
    */
   onAuth (data) {
     if (Object.prototype.hasOwnProperty.call(this._clients, data.userId)) {
@@ -30,7 +30,7 @@ class TwitchIrcConnector {
   }
 
   /**
-   * @param {WsDataReceiveRemoveBot} data
+   * @param {WsDataRemoveBot} data
    */
   onRemove (data) {
     delete data[data.userId]

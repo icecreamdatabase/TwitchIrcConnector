@@ -10,20 +10,16 @@ const UserLevels = require('../../ENUMS/UserLevels.js')
 const TIMEOUT_OFFSET = 100 //ms
 const MIN_MESSAGE_CUT_LENGTH_FACTOR = 0.75
 const NEWLINE_SEPERATOR = "{nl}" //Make sure to change it in Tts.js as well!
-
-const BATCH_MAX_FACTOR = 0.8 // limit of 100 * 0.8 = 80 messages per chunk
-const BATCH_DELAY_BETWEEN_CHUNKS = 30000 //m
-const BATCH_DEFAULT_LIMIT = 250
+const MAX_MESSAGE_LENGTH = 450
 
 class Queue {
   /**
    * @typedef {Object} MessageQueueElement
    * @property {boolean} checked
    * @property {boolean} isBeingChecked
-   * @property {number} channelId
    * @property {string} channelName
    * @property {string} message
-   * @property {number} userId
+   * @property {UserLevel} botStatus
    * @property {boolean} useSameSendConnectionAsPrevious
    */
 
@@ -40,10 +36,10 @@ class Queue {
     this._messageQueue = []
     this._queueEmitter = new EventEmitter()
     /**
-     * list of channelIds currently being processed in the queue.
+     * list of channelNames currently being processed in the queue.
      * This allows multiple channels to be fed by a single _messageQueue.
      * Simply skip all channels that are in this array.
-     * @type {number[]}
+     * @type {string[]}
      */
     this._channelProcessing = []
 
@@ -60,31 +56,20 @@ class Queue {
   }
 
   /**
-   *
-   * @param {string} targetUser
-   * @param {string} message
-   */
-  sendWhisper (targetUser, message) {
-    this.sayWithBoth(this.ircClient.userId, this.ircClient.userName, `.w ${targetUser} ${message}`)
-  }
-
-  /**
-   * @param {WsDataReceiveSend} data
+   * @param {WsDataSend} data
    */
   sayWithWsDataReceiveSendObj (data) {
-    this.sayWithBoth(data.channelId, data.channelName, data.message, data.userId, data.useSameSendConnectionAsPrevious)
+    this.sayWithChannelName(data.channelName, data.message, data.botStatus, data.useSameSendConnectionAsPrevious, data.maxMessageLength)
   }
 
   /**
-   * Send a message with both the channelId and the channelName.
-   * channelId and channelName have to match else there might be unpredictable problems.
-   * @param {string|number} channelId
    * @param {string} channelName
    * @param {string} message
-   * @param {string|number} userId
+   * @param {UserLevel} botStatus
    * @param {boolean} [useSameSendConnectionAsPrevious] undefined = automatic detection based on message splitting.
+   * @param {number} maxMessageLength
    */
-  sayWithBoth (channelId, channelName, message, userId = -1, useSameSendConnectionAsPrevious = undefined) {
+  sayWithChannelName (channelName, message, botStatus = UserLevels.DEFAULT, useSameSendConnectionAsPrevious = undefined, maxMessageLength = MAX_MESSAGE_LENGTH) {
     if (!message) {
       return
     }
@@ -99,7 +84,7 @@ class Queue {
     //handle newline
     let messageArray = message.split(NEWLINE_SEPERATOR)
     //split message if too long
-    messageArray = messageArray.map(x => this.splitRecursively(x, channelId))
+    messageArray = messageArray.map(x => this.splitRecursively(x, maxMessageLength))
     message = messageArray.join(NEWLINE_SEPERATOR)
     messageArray = message.split(NEWLINE_SEPERATOR)
 
@@ -115,10 +100,9 @@ class Queue {
         this._messageQueue.push({
           checked: false,
           isBeingChecked: false,
-          channelId,
           channelName,
           message: messageElement,
-          userId,
+          botStatus,
           useSameSendConnectionAsPrevious
         })
         this._queueEmitter.emit('event')
@@ -130,12 +114,11 @@ class Queue {
   /**
    * Recursively splits a message based on MAX_MESSAGE_LENGTH and MIN_MESSAGE_CUT_LENGTH.
    * Inserts NEWLINE_SEPERATOR into the gap
-   * @param message inputmessage
-   * @param channelId channelId needed for maxMessageLength
+   * @param {string} message
+   * @param {number} maxMessageLength
    * @returns {string} split message
    */
-  splitRecursively (message, channelId) {
-    let maxMessageLength = this.ircClient.channels[channelId].maxMessageLength
+  splitRecursively (message, maxMessageLength) {
     if (message.length > maxMessageLength) {
       let indexOfLastSpace = message.substring(0, maxMessageLength).lastIndexOf(' ')
       if (indexOfLastSpace < maxMessageLength * MIN_MESSAGE_CUT_LENGTH_FACTOR) {
@@ -143,7 +126,7 @@ class Queue {
       }
       return message.substring(0, indexOfLastSpace).trim()
         + NEWLINE_SEPERATOR
-        + this.splitRecursively(message.substring(indexOfLastSpace).trim(), channelId)
+        + this.splitRecursively(message.substring(indexOfLastSpace).trim(), maxMessageLength)
     }
     return message
   }
@@ -156,7 +139,7 @@ class Queue {
    */
   resetItemInQueue (msgObj) {
     msgObj.isBeingChecked = false
-    this._channelProcessing = this._channelProcessing.filter(c => c !== msgObj.channelId)
+    this._channelProcessing = this._channelProcessing.filter(c => c !== msgObj.channelName)
     this._queueEmitter.emit('event')
   }
 
@@ -171,31 +154,26 @@ class Queue {
       return
     }
     // get first msgObj from a channel currently not handled
-    let msgObj = this._messageQueue.find(x => !this._channelProcessing.includes(x.channelId))
+    let msgObj = this._messageQueue.find(x => !this._channelProcessing.includes(x.channelName))
     if (!msgObj || msgObj.isBeingChecked) {
       return
     }
     msgObj.isBeingChecked = true
     // This channel is currently getting processed
-    this._channelProcessing.push(msgObj.channelId)
+    this._channelProcessing.push(msgObj.channelName)
 
-    let channel = this.ircClient.channels[msgObj.channelId]
-    let botStatus = channel.botStatus || UserLevels.DEFAULT
-    if (typeof botStatus === 'undefined' || botStatus === null) {
-      botStatus = UserLevels.DEFAULT
-      DiscordLog.debug("No botStatus. Using UserLevels.DEFAULT")
-    }
+    let channel = this.ircClient.channels[msgObj.channelName]
 
     let currentTimeMillis = Date.now()
     // 1 second global cooldown (if not VIP or higher) checker
-    if (botStatus < UserLevels.VIP && currentTimeMillis < channel.lastMessageTimeMillis + 1000 + TIMEOUT_OFFSET) {
+    if (msgObj.botStatus < UserLevels.VIP && currentTimeMillis < channel.lastMessageTimeMillis + 1000 + TIMEOUT_OFFSET) {
       await sleep(channel.lastMessageTimeMillis - currentTimeMillis + 1000 + TIMEOUT_OFFSET)
       this.resetItemInQueue(msgObj)
       return
     }
     channel.lastMessageTimeMillis = currentTimeMillis
     // Only take a pleb ticket if the bot is a pleb
-    if (botStatus < UserLevels.VIP) {
+    if (msgObj.botStatus < UserLevels.VIP) {
       if (!this._privsgUserBucket.takeTicket()) {
         Logger.info("Denied user ticket")
         await sleep(1500)

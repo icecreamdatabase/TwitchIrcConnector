@@ -12,14 +12,14 @@ const WEBSOCKETPINGINTERVAL = 15000
 
 class WsServer extends EventEmitter {
   /**
-   * @typedef {Object} WsDataReceive
+   * @typedef {Object} WsDataMain
    * @property {string} cmd
-   * @property {object} data
+   * @property {WsDataAuth|WsDataJoinPartSet|WsDataSend|WsDataReceive|WsDataRemoveBot} data
    * @property {string} version
    */
 
   /**
-   * @typedef {Object} WsDataReceiveAuth
+   * @typedef {Object} WsDataAuth
    * @property {number|string} userId
    * @property {string} userName
    * @property {string} accessToken
@@ -28,36 +28,31 @@ class WsServer extends EventEmitter {
    */
 
   /**
-   * @typedef {Object} WsDataReceiveJoinAndPart
+   * @typedef {Object} WsDataJoinPartSet
    * @property {number|string} botUserId
    * @property {string[]} channelNames
    */
 
   /**
-   * @typedef {Object} WsDataReceiveSetChannels
+   * Send to TwitchIrcConnector to send it twitch.
+   * @typedef {Object} WsDataSend
    * @property {number|string} botUserId
-   * @property {string[]} channelNames
-   */
-
-  /**
-   * @typedef {Object} WsDataReceiveSend
-   * @property {number|string} botUserId
-   * @property {number|string} channelId
    * @property {string} channelName
    * @property {string} message
    * @property {number|string} [userId]
+   * @property {UserLevel} botStatus
    * @property {boolean} [useSameSendConnectionAsPrevious] undefined = automatic detection based on message splitting.
+   * @property {number} [maxMessageLength]
    *
    */
 
   /**
-   * @typedef {Object} WsDataReceiveReceive
-   * @property {number|string} botUserId
-   * @property {string} channelName
+   * Receive from twitch to send to the clients.
+   * @typedef {Object} WsDataReceive
    */
 
   /**
-   * @typedef {Object} WsDataReceiveRemoveBot
+   * @typedef {Object} WsDataRemoveBot
    * @property {number|string} userId
    */
 
@@ -114,7 +109,7 @@ class WsServer extends EventEmitter {
     Logger.log(`°° WS received: ${message}`)
     try {
       /**
-       * @type {WsDataReceive}
+       * @type {WsDataMain}
        */
       let parsedMsg = JSON.parse(message)
       if (parsedMsg.version === this.WS_VERSION) {
@@ -146,7 +141,7 @@ class WsServer extends EventEmitter {
    * Send data to all open websocket clients based on a includeClientChecker function.
    * @param {string} cmd
    * @param {object} data
-   * @param {function(WsDataReceive.data): boolean} includeClientChecker
+   * @param {function(WsDataMain.data): boolean} includeClientChecker
    * @return {number} How many clients has the message been sent to.
    */
   sendToWebsocket (cmd, data = undefined, includeClientChecker = () => true) {
@@ -157,7 +152,11 @@ class WsServer extends EventEmitter {
           && includeClientChecker(client.data)) {
           try {
             clientsSentTo++
-            Logger.debug(`°° WS sent:     ${JSON.stringify({cmd: cmd.toLowerCase(), data: data, version: this.WS_VERSION})}`)
+            Logger.debug(`°° WS sent:     ${JSON.stringify({
+              cmd: cmd.toLowerCase(),
+              data: data,
+              version: this.WS_VERSION
+            })}`)
             client.send(JSON.stringify({cmd: cmd.toLowerCase(), data: data, version: this.WS_VERSION}))
           } catch (e) {
             Logger.error(__filename + "\nsend failed\n" + e)

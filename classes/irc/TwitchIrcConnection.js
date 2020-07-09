@@ -180,16 +180,13 @@ class TwitchIrcConnection extends EventEmitter {
   }
 
   /**
-   * Say a message in a channel
-   * @param channel
-   * @param message
+   * Say a message in a channel.
+   * @param {string} channel Needs to start with a # symbol.
+   * @param {string} message
    */
   say (channel, message) {
-    if (channel.charAt(0) !== '#') {
-      channel = '#' + channel
-    }
-    //Logger.debug(`++> PRIVMSG ${channel} :${message}`)
-    this.send(`PRIVMSG ${channel} :${message}`)
+    //Logger.debug(`++> PRIVMSG #${channel} :${message}`)
+    this.send(`PRIVMSG #${channel} :${message}`)
   }
 
   /**
