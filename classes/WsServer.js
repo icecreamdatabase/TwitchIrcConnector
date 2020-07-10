@@ -48,7 +48,7 @@ class WsServer extends EventEmitter {
 
   /**
    * Receive from twitch to send to the clients.
-   * @typedef {Object} WsDataReceive
+   * @typedef {Object[]} WsDataReceive
    */
 
   /**
@@ -135,6 +135,9 @@ class WsServer extends EventEmitter {
   }
 
   sendToAllClientForBotUserId (userId, cmd, data = undefined) {
+    if (!Array.isArray(data)) {
+      data = [data]
+    }
     this.sendToWebsocket(cmd,
       data,
       function (client) { // Don't use arrow function! Else userId is not accessible!
@@ -145,7 +148,7 @@ class WsServer extends EventEmitter {
   /**
    * Send data to all open websocket clients based on a includeClientChecker function.
    * @param {string} cmd
-   * @param {object} data
+   * @param {object[]} data
    * @param {function(WsDataMain.data): boolean} includeClientChecker
    * @return {number} How many clients has the message been sent to.
    */
@@ -157,11 +160,17 @@ class WsServer extends EventEmitter {
           && includeClientChecker(client.data)) {
           try {
             clientsSentTo++
-            Logger.debug(`°° WS sent:     ${JSON.stringify({
-              cmd: cmd.toLowerCase(),
-              data: data,
-              version: this.WS_VERSION
-            })}`)
+            /*
+            if (data.length > 0
+              && Object.prototype.hasOwnProperty.call(data[0], "command")
+              && data[0].command !== "PRIVMSG") {
+              Logger.debug(`°° WS sent:     ${JSON.stringify({
+                cmd: cmd.toLowerCase(),
+                data: data,
+                version: this.WS_VERSION
+              })}`)
+            }
+            */
             client.send(JSON.stringify({cmd: cmd.toLowerCase(), data: data, version: this.WS_VERSION}))
           } catch (e) {
             Logger.error(__filename + "\nsend failed\n" + e)

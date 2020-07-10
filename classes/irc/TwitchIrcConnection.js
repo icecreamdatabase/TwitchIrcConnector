@@ -185,7 +185,7 @@ class TwitchIrcConnection extends EventEmitter {
    * @param {string} message
    */
   say (channel, message) {
-    //Logger.debug(`++> PRIVMSG #${channel} :${message}`)
+    //Logger.debug(`${this.ircClient.userId} (${this.ircClient.userName}) ++> PRIVMSG #${channel} :${message}`)
     this.send(`PRIVMSG #${channel} :${message}`)
   }
 

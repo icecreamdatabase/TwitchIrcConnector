@@ -133,16 +133,8 @@ class IrcClient {
    * @returns {Promise<void>}
    */
   async OnGetIrcStates (data) {
-    for (const lastUserStatesKey in this.lastUserStates) {
-      if (Object.prototype.hasOwnProperty.call(this.lastUserStates, lastUserStatesKey)) {
-        WebSocketServer.sendToAllClientForBotUserId(this.userId, WsCmds.RECEIVE, this.lastUserStates[lastUserStatesKey])
-      }
-    }
-    for (const lastRoomStatesKey in this.lastRoomStates) {
-      if (Object.prototype.hasOwnProperty.call(this.lastRoomStates, lastRoomStatesKey)) {
-        WebSocketServer.sendToAllClientForBotUserId(this.userId, WsCmds.RECEIVE, this.lastRoomStates[lastRoomStatesKey])
-      }
-    }
+    let dataArray = Object.values(this.lastUserStates).concat(Object.values(this.lastRoomStates))
+    WebSocketServer.sendToAllClientForBotUserId(this.userId, WsCmds.RECEIVE, dataArray)
   }
 
   async joinListOfNames (channelNames) {

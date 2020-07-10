@@ -199,9 +199,7 @@ class IrcConnectionPool {
       newConnection.on(event.event, event.fn, event.context)
     }
     this.receiveConnections.push(newConnection)
-    Logger.debug(`##############################`)
-    Logger.debug(`New amount of Pools: ${this.receiveConnections.length}`)
-    Logger.debug(`##############################`)
+    Logger.debug(`${this.ircClient.userId} (${this.ircClient.userName}) ~~~ New pool count: ${this.receiveConnections.length}`)
     return newConnection
   }
 }
