@@ -154,7 +154,11 @@ class IrcClient {
   async partListOfNames (channelNames) {
     if (channelNames.length > 0) {
       Logger.info(`Parting: ${channelNames}`)
-      this.channels = this.channels.filter(x => !channelNames.includes(x))
+      for (const channelName of channelNames) {
+        if (!Object.prototype.hasOwnProperty.call(this.channels, channelName)) {
+          delete this.channels[channelName]
+        }
+      }
       await this.ircConnectionPool.leaveChannel(channelNames)
     }
   }
