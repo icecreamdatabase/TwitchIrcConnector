@@ -2,6 +2,7 @@
 const TwitchIrcConnection = require('./TwitchIrcConnection')
 const ChatLimit = require('./../../ENUMS/ChatLimit')
 const Logger = require('./../helper/Logger')
+const BasicBucket = require('./BasicBucket')
 
 const maxChannelsPerConnection = 50
 
@@ -127,14 +128,22 @@ class IrcConnectionPool {
       channels = [channels]
     }
 
+    let channelsNotYetAdded = []
+
     for (let channel of channels) {
       if (!this.getConnectionByChannel(channel)) {
-        let connection = await this.getFreeConnection(1)
-        if (connection) {
-          connection.join(channel)
-        } else {
-          throw Error(`Couldn't get free irc connection for channel ${channel}`)
-        }
+        channelsNotYetAdded.push(channel)
+      }
+    }
+
+    while (channelsNotYetAdded.length > 0) {
+      let channelPart = channelsNotYetAdded.splice(0, maxChannelsPerConnection)
+      let connection = await this.getFreeConnection(channelPart.length)
+      if (connection) {
+        connection.joinListWithRatelimit(channelPart).then(() => Logger.log("Finished joining channels..."))
+        await (ms => new Promise(resolve => setTimeout(resolve, ms)))(2500)
+      } else {
+        throw Error(`Couldn't get free irc connection for channelPart with length: ${channelPart.length}`)
       }
     }
   }

@@ -5,6 +5,7 @@ const ircMessage = require('irc-message')
 
 const Logger = require('../helper/Logger')
 const DiscordLog = require('../helper/DiscordLog')
+const BasicBucket = require('./BasicBucket')
 
 const host = 'irc.chat.twitch.tv'
 const port = 6667
@@ -31,6 +32,7 @@ class TwitchIrcConnection extends EventEmitter {
     this.commandsPer30 = 0
     this._lastPingDuration = -1
     this._currentPingStart = 0
+    this.joinBucket = new BasicBucket(15)
 
     this.interval = setInterval(() => {
       this.commandsPer30 = 0
@@ -121,13 +123,25 @@ class TwitchIrcConnection extends EventEmitter {
     clearInterval(this.interval)
   }
 
+  async joinListWithRatelimit (channels) {
+    for (const channel of channels) {
+      while (!this.joinBucket.takeTicket()) {
+        // sleep 1000ms
+        await (ms => new Promise(resolve => setTimeout(resolve, ms)))(1000)
+      }
+      this.join(channel)
+    }
+  }
+
   /**
    * Join a channel
    * @param channel
    */
   join (channel) {
     this.send(`JOIN #${channel}`)
-    this.channels.push(channel)
+    if (!this.channels.includes(channel)) {
+      this.channels.push(channel)
+    }
   }
 
   /**
@@ -169,9 +183,10 @@ class TwitchIrcConnection extends EventEmitter {
         this.send(`NICK ${this.ircClient.userName}`)
         this.send(`USER ${this.ircClient.userName} 8 * :${this.ircClient.userName}`)
         this.emit('connect')
-        for (let i = 0; i < this.channels.length; i++) {
-          this.send(`JOIN #${this.channels[i]}`)
-        }
+        this.joinListWithRatelimit(this.channels)
+        //for (let i = 0; i < this.channels.length; i++) {
+        //  this.send(`JOIN #${this.channels[i]}`)
+        //}
         this.pingTimeout = setTimeout(() => this._sendPing(), 60 * 1000)
 
         resolve()
