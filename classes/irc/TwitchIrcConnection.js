@@ -33,6 +33,7 @@ class TwitchIrcConnection extends EventEmitter {
     this._lastPingDuration = -1
     this._currentPingStart = 0
     this.joinBucket = new BasicBucket(15)
+    this.alreadyReportedDisconnect = false
 
     this.interval = setInterval(() => {
       this.commandsPer30 = 0
@@ -123,14 +124,23 @@ class TwitchIrcConnection extends EventEmitter {
     clearInterval(this.interval)
   }
 
-  async joinListWithRatelimit (channels) {
+  /**
+   * @param {string[]} channels
+   * @param {function(string)} [cbAfterJoin] call this for every channel joined.
+   * @return {Promise<*>}
+   */
+  async joinListWithRatelimit (channels, cbAfterJoin = channel => undefined) {
     for (const channel of channels) {
       while (!this.joinBucket.takeTicket()) {
         // sleep 1000ms
         await (ms => new Promise(resolve => setTimeout(resolve, ms)))(1000)
       }
       this.join(channel)
+      if (cbAfterJoin) {
+        cbAfterJoin(channel)
+      }
     }
+    return channels
   }
 
   /**
@@ -189,6 +199,7 @@ class TwitchIrcConnection extends EventEmitter {
         //}
         this.pingTimeout = setTimeout(() => this._sendPing(), 60 * 1000)
 
+        this.alreadyReportedDisconnect = false
         resolve()
       })
     })
@@ -232,7 +243,10 @@ class TwitchIrcConnection extends EventEmitter {
     if (this.forceDisconnect || this.reconnectionAttempts > 0) {
       return // either deliberate or reconnection is already running.
     }
-    Logger.error(`Disconnected from Twitch. \nBot: ${this.ircClient.userName}`)
+    if (!this.alreadyReportedDisconnect) {
+      Logger.error(`Disconnected from Twitch. \nBot: ${this.ircClient.userName}`)
+      this.alreadyReportedDisconnect = true
+    }
     let timeout = 150
     if (this.reconnectionAttempts > 0) {
       const randomJitter = Math.floor(Math.random() * (reconnectJitter + 1))

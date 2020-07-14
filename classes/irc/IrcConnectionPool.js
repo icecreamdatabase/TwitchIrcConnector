@@ -29,6 +29,11 @@ class IrcConnectionPool {
      */
     this.events = []
 
+    /**
+     * @type {Set<string>}
+     */
+    this.channelsInJoinQueue = new Set()
+
     this.connectSendConnections()
   }
 
@@ -131,7 +136,9 @@ class IrcConnectionPool {
     let channelsNotYetAdded = []
 
     for (let channel of channels) {
-      if (!this.getConnectionByChannel(channel)) {
+      if (!this.getConnectionByChannel(channel)
+        && !this.channelsInJoinQueue.has(channel)) {
+        this.channelsInJoinQueue.add(channel)
         channelsNotYetAdded.push(channel)
       }
     }
@@ -140,7 +147,9 @@ class IrcConnectionPool {
       let channelPart = channelsNotYetAdded.splice(0, maxChannelsPerConnection)
       let connection = await this.getFreeConnection(channelPart.length)
       if (connection) {
-        connection.joinListWithRatelimit(channelPart).then(() => Logger.log("Finished joining channels..."))
+        connection.joinListWithRatelimit(channelPart,
+          chJoined => this.channelsInJoinQueue.delete(chJoined)
+        ).then(() => Logger.log("Finished joining channels..."))
         await (ms => new Promise(resolve => setTimeout(resolve, ms)))(2500)
       } else {
         throw Error(`Couldn't get free irc connection for channelPart with length: ${channelPart.length}`)
