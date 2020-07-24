@@ -177,7 +177,7 @@ class TwitchIrcConnection extends EventEmitter {
    * @returns {Promise<void>}
    */
   async connect () {
-    Logger.info(`Connecting to ${host}:${port}`)
+    Logger.info(`{${this.ircClient.applicationId}} Connecting to ${host}:${port}`)
     return new Promise((resolve) => {
 
       this.client.connect(port, host, () => {
@@ -187,7 +187,7 @@ class TwitchIrcConnection extends EventEmitter {
         }
         this.reconnectionAttempts = 0
         this.connected = true
-        Logger.info(`Successfully connected to ${host}:${port}`)
+        Logger.info(`{${this.ircClient.applicationId}} Successfully connected to ${host}:${port}`)
         this.send('CAP REQ :twitch.tv/tags twitch.tv/commands')// twitch.tv/membership')
         this.send(`PASS oauth:${this.ircClient.accessToken}`)
         this.send(`NICK ${this.ircClient.userName}`)
@@ -211,7 +211,7 @@ class TwitchIrcConnection extends EventEmitter {
    * @param {string} message
    */
   say (channel, message) {
-    //Logger.debug(`${this.ircClient.userId} (${this.ircClient.userName}) ++> PRIVMSG #${channel} :${message}`)
+    //Logger.debug(`{${this.ircClient.applicationId}} ${this.ircClient.userId} (${this.ircClient.userName}) ++> PRIVMSG #${channel} :${message}`)
     this.send(`PRIVMSG #${channel} :${message}`)
   }
 
@@ -226,7 +226,7 @@ class TwitchIrcConnection extends EventEmitter {
       return
     }
     if (data !== 'PONG' && data !== 'PING') {
-      Logger.debug(`${this.ircClient.userId} (${this.ircClient.userName}) --> ${data.startsWith('PASS ') ? 'PASS oauth:********' : data}`)
+      Logger.debug(`{${this.ircClient.applicationId}} ${this.ircClient.userId} (${this.ircClient.userName}) --> ${data.startsWith('PASS ') ? 'PASS oauth:********' : data}`)
     }
     ++this.commandsPer30
     this.client.write(`${data}\n`)
@@ -244,7 +244,7 @@ class TwitchIrcConnection extends EventEmitter {
       return // either deliberate or reconnection is already running.
     }
     if (!this.alreadyReportedDisconnect) {
-      Logger.error(`Disconnected from Twitch. \nBot: ${this.ircClient.userName}`)
+      Logger.error(`Disconnected from Twitch. \nApplication: ${this.ircClient.applicationId} \nBot: ${this.ircClient.userName}`)
       this.alreadyReportedDisconnect = true
     }
     let timeout = 150

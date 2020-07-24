@@ -11,11 +11,19 @@ const WsCmds = require('../ENUMS/WsCmds')
 const WEBSOCKETPINGINTERVAL = 15000
 
 class WsServer extends EventEmitter {
+
+  /**
+   * @typedef {object} WebSocket.data
+   * @property {number|string} applicationId
+   * @property {number|string} userId
+   */
+
   /**
    * @typedef {Object} WsDataMain
    * @property {string} cmd
    * @property {WsDataAuth|WsDataJoinPartSet|WsDataSend|WsDataReceive|WsDataRemoveBot} data
    * @property {string} version
+   * @property {number|string} applicationId
    */
 
   /**
@@ -63,6 +71,7 @@ class WsServer extends EventEmitter {
 
   /**
    * @return {WsServer}
+   * @emits Events of WsCmds ENUM. All functions in format: (applicationId, data).
    */
   constructor () {
     if (WsServer.instance) {
@@ -121,9 +130,9 @@ class WsServer extends EventEmitter {
 
         if (parsedMsg.cmd === WsCmds.AUTH) {
           // noinspection JSUndefinedPropertyAssignment
-          ws.data = parsedMsg.data.userId
+          ws.data = {applicationId: parsedMsg.applicationId, userId: parsedMsg.data.userId}
         }
-        this.emit(parsedMsg.cmd, parsedMsg.data)
+        this.emit(parsedMsg.cmd, parsedMsg.applicationId, parsedMsg.data)
       } else {
         //TODO: tell the client that it's on the wrong version
         //ws.send()
@@ -134,14 +143,14 @@ class WsServer extends EventEmitter {
     }
   }
 
-  sendToAllClientForBotUserId (userId, cmd, data = undefined) {
+  sendToAllClientForId (applicationId, userId, cmd, data = undefined) {
     if (!Array.isArray(data)) {
       data = [data]
     }
     this.sendToWebsocket(cmd,
       data,
-      function (client) { // Don't use arrow function! Else userId is not accessible!
-        return client === userId
+      function (clientData) { // Don't use arrow function! Else userId is not accessible!
+        return clientData.applicationId === applicationId && clientData.userId === userId
       })
   }
 
@@ -149,7 +158,7 @@ class WsServer extends EventEmitter {
    * Send data to all open websocket clients based on a includeClientChecker function.
    * @param {string} cmd
    * @param {object[]} data
-   * @param {function(WsDataMain.data): boolean} includeClientChecker
+   * @param {function(WebSocket.data): boolean} includeClientChecker
    * @return {number} How many clients has the message been sent to.
    */
   sendToWebsocket (cmd, data = undefined, includeClientChecker = () => true) {

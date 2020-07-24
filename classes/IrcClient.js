@@ -13,10 +13,11 @@ class IrcClient {
    */
 
   /**
+   * @param {number|string} applicationId
    * @param {WsDataAuth} data
    */
-  constructor (data) {
-    this.updateAuth(data)
+  constructor (applicationId, data) {
+    this.updateAuth(applicationId, data)
 
     //TODO maxMessageLength and botStatus have to come from somewhere!
     /**
@@ -41,7 +42,7 @@ class IrcClient {
   }
 
   onIrcEvent (data) {
-    WebSocketServer.sendToAllClientForBotUserId(this.userId, WsCmds.RECEIVE, data)
+    WebSocketServer.sendToAllClientForId(this.applicationId, this.userId, WsCmds.RECEIVE, data)
     if (Object.prototype.hasOwnProperty.call(data, "command")) {
       switch (data.command) {
         case "USERSTATE":
@@ -52,6 +53,10 @@ class IrcClient {
           break
       }
     }
+  }
+
+  get applicationId () {
+    return this._applicationId
   }
 
   get userId () {
@@ -75,10 +80,12 @@ class IrcClient {
   }
 
   /**
+   * @param {number|string} applicationId
    * @param {WsDataAuth} data
    */
-  updateAuth (data) {
-    Logger.info(`Auth for: ${data.userId} (${data.userName})`)
+  updateAuth (applicationId, data) {
+    Logger.info(`{${applicationId}} Auth for: ${data.userId} (${data.userName})`)
+    this._applicationId = applicationId
     this._userId = data.userId
     this._userName = data.userName
     this._accessToken = data.accessToken
@@ -87,9 +94,10 @@ class IrcClient {
   }
 
   /**
+   * @param {number|string} applicationId
    * @param {WsDataSend} data
    */
-  onSend (data) {
+  onSend (applicationId, data) {
     if (this.userId === data.botUserId) {
       if (data.channelName.charAt(0) === '#') {
         data.channelName = data.channelName.substr(1)
@@ -99,27 +107,30 @@ class IrcClient {
   }
 
   /**
+   * @param {number|string} applicationId
    * @param {WsDataJoinPartSet} data
    */
-  async onJoin (data) {
+  async onJoin (applicationId, data) {
     if (this.userId === data.botUserId) {
       await this.joinListOfNames(data.channelNames)
     }
   }
 
   /**
+   * @param {number|string} applicationId
    * @param {WsDataJoinPartSet} data
    */
-  async onPart (data) {
+  async onPart (applicationId, data) {
     if (this.userId === data.botUserId) {
       await this.partListOfNames(data.channelNames)
     }
   }
 
   /**
+   * @param {number|string} applicationId
    * @param {WsDataJoinPartSet} data
    */
-  async onSetChannels (data) {
+  async onSetChannels (applicationId, data) {
     if (this.userId === data.botUserId) {
       let channelsToPart = this.ircConnectionPool.channels.filter(x => !data.channelNames.includes(x))
       let channelsToJoin = data.channelNames.filter(x => !this.ircConnectionPool.channels.includes(x))
@@ -129,19 +140,20 @@ class IrcClient {
   }
 
   /**
+   * @param {number|string} applicationId
    * @param {WsDataRequestIrcStates} data
    * @returns {Promise<void>}
    */
-  async OnGetIrcStates (data) {
+  async OnGetIrcStates (applicationId, data) {
     let dataArray = Object.values(this.lastUserStates).concat(Object.values(this.lastRoomStates))
-    WebSocketServer.sendToAllClientForBotUserId(this.userId, WsCmds.RECEIVE, dataArray)
+    WebSocketServer.sendToAllClientForId(this.applicationId, this.userId, WsCmds.RECEIVE, dataArray)
   }
 
   async joinListOfNames (channelNames) {
     channelNames = channelNames.map(x => x.charAt(0) === '#' ? x.substr(0) : x)
 
     if (channelNames.length > 0) {
-      Logger.info(`Joining: ${channelNames}`)
+      Logger.info(`{${this.applicationId}} Joining: ${channelNames}`)
       for (const channelName of channelNames) {
         if (!Object.prototype.hasOwnProperty.call(this.channels, channelName)) {
           this.channels[channelName] = {lastMessage: "", lastMessageTimeMillis: 0}
@@ -153,7 +165,7 @@ class IrcClient {
 
   async partListOfNames (channelNames) {
     if (channelNames.length > 0) {
-      Logger.info(`Parting: ${channelNames}`)
+      Logger.info(`{${this.applicationId}} Parting: ${channelNames}`)
       for (const channelName of channelNames) {
         if (!Object.prototype.hasOwnProperty.call(this.channels, channelName)) {
           delete this.channels[channelName]

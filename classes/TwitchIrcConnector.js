@@ -8,7 +8,8 @@ const Logger = require('./helper/Logger')
 class TwitchIrcConnector {
   constructor () {
     /**
-     * @type {Object.<number|string,IrcClient>}
+     * Key is build like "applicationId;botUserId".
+     * @type {Object.<string,IrcClient>}
      * @private
      */
     this._clients = {}
@@ -18,22 +19,24 @@ class TwitchIrcConnector {
   }
 
   /**
+   * @param {number|string} applicationId
    * @param {WsDataAuth} data
    */
-  onAuth (data) {
-    if (Object.prototype.hasOwnProperty.call(this._clients, data.userId)) {
-      this._clients[data.userId].updateAuth(data)
+  onAuth (applicationId, data) {
+    if (Object.prototype.hasOwnProperty.call(this._clients, `${applicationId};${data.userId}`)) {
+      this._clients[`${applicationId};${data.userId}`].updateAuth(applicationId, data)
     } else {
-      Logger.info(`First time auth for: ${data.userId} (${data.userName})`)
-      this._clients[data.userId] = new IrcClient(data)
+      Logger.info(`{${applicationId}} First time auth for: ${data.userId} (${data.userName})`)
+      this._clients[`${applicationId};${data.userId}`] = new IrcClient(applicationId, data)
     }
   }
 
   /**
+   * @param {number|string} applicationId
    * @param {WsDataRemoveBot} data
    */
-  onRemove (data) {
-    delete data[data.userId]
+  onRemove (applicationId, data) {
+    delete data[`${applicationId};${data.userId}`]
   }
 
 

@@ -114,7 +114,7 @@ class IrcConnectionPool {
       }
       this.sendConnections[this.sendConnectionLastIndex].say(channel, message)
     } else {
-      Logger.warn("No send connection yet")
+      Logger.warn(`${this.ircClient.applicationId} No send connection yet`)
     }
   }
 
@@ -149,7 +149,7 @@ class IrcConnectionPool {
       if (connection) {
         connection.joinListWithRatelimit(channelPart,
           chJoined => this.channelsInJoinQueue.delete(chJoined)
-        ).then(() => Logger.log("Finished joining channels..."))
+        ).then(() => Logger.log(`{${this.ircClient.applicationId}} Finished joining channels...`))
         await (ms => new Promise(resolve => setTimeout(resolve, ms)))(2500)
       } else {
         throw Error(`Couldn't get free irc connection for channelPart with length: ${channelPart.length}`)
@@ -217,7 +217,7 @@ class IrcConnectionPool {
       newConnection.on(event.event, event.fn, event.context)
     }
     this.receiveConnections.push(newConnection)
-    Logger.debug(`${this.ircClient.userId} (${this.ircClient.userName}) ~~~ New pool count: ${this.receiveConnections.length}`)
+    Logger.debug(`{${this.ircClient.applicationId}} ${this.ircClient.userId} (${this.ircClient.userName}) ~~~ New pool count: ${this.receiveConnections.length}`)
     return newConnection
   }
 }
