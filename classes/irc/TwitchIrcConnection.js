@@ -209,10 +209,15 @@ class TwitchIrcConnection extends EventEmitter {
    * Say a message in a channel.
    * @param {string} channel Needs to start with a # symbol.
    * @param {string} message
+   * @param {string} [replyParentMessage]
    */
-  say (channel, message) {
+  say (channel, message, replyParentMessage) {
     //Logger.debug(`{${this.ircClient.applicationId}} ${this.ircClient.userId} (${this.ircClient.userName}) ++> PRIVMSG #${channel} :${message}`)
-    this.send(`PRIVMSG #${channel} :${message}`)
+    if (replyParentMessage === undefined) {
+      this.send(`PRIVMSG #${channel} :${message}`)
+    } else {
+      this.send(`@reply-parent-msg-id=${replyParentMessage} PRIVMSG #${channel} :${message}`)
+    }
   }
 
   /**

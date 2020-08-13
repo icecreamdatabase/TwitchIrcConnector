@@ -51,6 +51,7 @@ class WsServer extends EventEmitter {
    * @property {UserLevel} botStatus
    * @property {boolean} [useSameSendConnectionAsPrevious] undefined = automatic detection based on message splitting.
    * @property {number} [maxMessageLength]
+   * @property {string} [replyParentMessage]
    *
    */
 

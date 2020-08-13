@@ -107,12 +107,12 @@ class IrcConnectionPool {
     }
   }
 
-  say (channel, message, useSameSendConnectionAsPrevious = false) {
+  say (channel, message, useSameSendConnectionAsPrevious = false, replyParentMessage) {
     if (this.sendConnections.length > 0) {
       if (!useSameSendConnectionAsPrevious) {
         this.sendConnectionLastIndex = ++this.sendConnectionLastIndex % this.sendConnections.length
       }
-      this.sendConnections[this.sendConnectionLastIndex].say(channel, message)
+      this.sendConnections[this.sendConnectionLastIndex].say(channel, message, replyParentMessage)
     } else {
       Logger.warn(`${this.ircClient.applicationId} No send connection yet`)
     }

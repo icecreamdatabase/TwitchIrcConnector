@@ -21,6 +21,7 @@ class Queue {
    * @property {string} message
    * @property {UserLevel} botStatus
    * @property {boolean} useSameSendConnectionAsPrevious
+   * @property {string} [replyParentMessage]
    */
 
   /**
@@ -59,7 +60,7 @@ class Queue {
    * @param {WsDataSend} data
    */
   sayWithWsDataReceiveSendObj (data) {
-    this.sayWithChannelName(data.channelName, data.message, data.botStatus, data.useSameSendConnectionAsPrevious, data.maxMessageLength)
+    this.sayWithChannelName(data.channelName, data.message, data.botStatus, data.useSameSendConnectionAsPrevious, data.maxMessageLength, data.replyParentMessage)
   }
 
   /**
@@ -69,7 +70,7 @@ class Queue {
    * @param {boolean} [useSameSendConnectionAsPrevious] undefined = automatic detection based on message splitting.
    * @param {number} maxMessageLength
    */
-  sayWithChannelName (channelName, message, botStatus = UserLevels.DEFAULT, useSameSendConnectionAsPrevious = undefined, maxMessageLength = MAX_MESSAGE_LENGTH) {
+  sayWithChannelName (channelName, message, botStatus = UserLevels.DEFAULT, useSameSendConnectionAsPrevious = undefined, maxMessageLength = MAX_MESSAGE_LENGTH, replyParentMessage) {
     if (!message) {
       return
     }
@@ -103,7 +104,8 @@ class Queue {
           channelName,
           message: messageElement,
           botStatus,
-          useSameSendConnectionAsPrevious
+          useSameSendConnectionAsPrevious,
+          replyParentMessage
         })
         this._queueEmitter.emit('event')
       }
@@ -194,7 +196,7 @@ class Queue {
     }
     channel.lastMessage = msgObj.message
 
-    this.ircClient.ircConnectionPool.say(msgObj.channelName, msgObj.message, msgObj.useSameSendConnectionAsPrevious)
+    this.ircClient.ircConnectionPool.say(msgObj.channelName, msgObj.message, msgObj.useSameSendConnectionAsPrevious, msgObj.replyParentMessage)
 
     this._messageQueue = this._messageQueue.filter(c => c !== msgObj)
     this.resetItemInQueue(msgObj)
