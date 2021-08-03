@@ -32,7 +32,7 @@ class TwitchIrcConnection extends EventEmitter {
     this.commandsPer30 = 0
     this._lastPingDuration = -1
     this._currentPingStart = 0
-    this.joinBucket = new BasicBucket(15)
+    this.joinBucket = new BasicBucket(15, 10)
     this.alreadyReportedDisconnect = false
 
     this.interval = setInterval(() => {

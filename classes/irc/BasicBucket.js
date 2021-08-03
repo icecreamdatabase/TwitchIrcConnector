@@ -6,8 +6,10 @@ const TICKET_RETURN_TIMEOUT = 30000
 class BasicBucket {
   /**
    * @param {number} limit
+   * @param {number} timeout
    */
-  constructor (limit) {
+  constructor (limit, timeout) {
+    this.timeout = timeout || TICKET_RETURN_TIMEOUT
     this.usedTickets = 0
     this._limit = limit || 20
   }
@@ -35,7 +37,7 @@ class BasicBucket {
   takeTicket () {
     if (this.usedTickets < this.limit) {
       this.usedTickets++
-      setTimeout(returnTicket.bind(this), TICKET_RETURN_TIMEOUT)
+      setTimeout(returnTicket.bind(this), this.timeout)
       return true
     } else {
       return false
